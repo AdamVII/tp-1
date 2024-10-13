@@ -198,11 +198,76 @@ Interface : 172.20.10.4 --- 0x14
 
 ## 3. Bonus : ARP poisoning
 ### Empoisonner la table ARP de l'un des membres de votre réseau
+J'ai commencé par récuperer l'ip de la passerelle, celle de mon pc portable qui attaque, de mon fixe qui subit, avec leurs adresses mac réspectives
+
+PC ATTAQUANT
+```
+PS C:\Users\benai> ipconfig /all
+Carte réseau sans fil Wi-Fi :
+ Adresse physique . . . . . . . . . . . : 1C-CE-51-24-C7-33
+ Adresse IPv4. . . . . . . . . . . . . .: 192.168.1.15(préféré)
+ Passerelle par défaut. . . . . . . . . : fe80::327c:b2ff:fec2:1466%21
+                                       192.168.1.1
 ```
 
+PC VICTIME
 ```
+PS C:\Users\benai> ipconfig /all
+Carte réseau sans fil Wi-Fi :
+Adresse physique . . . . . . . . . . . : 40-5B-D8-8D-2D-67
+Adresse IPv4. . . . . . . . . . . . . .: 192.168.1.2O(préféré)
+```
+
+J'ai récuperer la table ARP de mon PC victime
+```
+PS C:\Users\benai> arp -a
+
+Interface : 192.168.1.20 --- 0xc
+  Adresse Internet      Adresse physique      Type
+  192.168.1.1           30-7c-b2-c2-14-66     dynamique
+  192.168.1.255         ff-ff-ff-ff-ff-ff     statique
+  224.0.0.2             01-00-5e-00-00-02     statique
+  224.0.0.22            01-00-5e-00-00-16     statique
+  224.0.0.251           01-00-5e-00-00-fb     statique
+  224.0.0.252           01-00-5e-00-00-fc     statique
+  239.255.255.250       01-00-5e-7f-ff-fa     statique
+  255.255.255.255       ff-ff-ff-ff-ff-ff     statique
+```
+
+En fouinant sur Internet j'ai appris qu'on pouvait se servir d'un script pour empoisonner la table ARP de la victime, j'ai pris [celui-ci](https://github.com/davidlares/arp-spoofing) codé en python.
+
+J'ai d'abord installé les bibliothèques python et modifié le script avec l'ip du PC victime
+``` 
+PS C:\Windows\system32> pip install six
+PS C:\Windows\system32> pip install scapy
+```
+
+J'ai cd jusqu'au fichier spoofer et je l'ai éxécuté
+```
+PS C:\Windows\system32> cd C:\Users\benai\Downloads\arp-spoofing-master
+PS C:\Users\benai\Downloads\arp-spoofing-master> python .\spoofer.py
+```
+
+Si on regarde la capture wireshark spoofer.pcap on voit que mon script spam la table ARP du PC victime en permanence.
+Je refais un arp -a sur mon PC victime
+```
+PS C:\Users\benai> arp -a
+
+Interface : 192.168.1.20 --- 0xc
+  Adresse Internet      Adresse physique      Type
+  192.168.1.1           1c-ce-51-24-c7-33     dynamique
+  192.168.1.15          1c-ce-51-24-c7-33     dynamique
+  192.168.1.255         ff-ff-ff-ff-ff-ff     statique
+  224.0.0.2             01-00-5e-00-00-02     statique
+  224.0.0.22            01-00-5e-00-00-16     statique
+  224.0.0.251           01-00-5e-00-00-fb     statique
+  224.0.0.252           01-00-5e-00-00-fc     statique
+  239.255.255.250       01-00-5e-7f-ff-fa     statique
+  255.255.255.255       ff-ff-ff-ff-ff-ff     statique
+```
+Ma table ARP est bien empoisonnée, mon adresse mac est reliée à l'adresse du routeur
+
+
 
 ###  Mettre en place un MITM
-```
-
-```
+avec la capture MITM.pcap on constate que pendant que mon script est en marche, mon PC attaquant intercepte toutes les connexions que mon PC victime fait sur internet et me renvoie les adresses IP de ces sites (ça rame un max part contre).
